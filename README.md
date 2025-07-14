@@ -25,6 +25,7 @@ ShadowSync/
 │   ├── watch_changes.py  # 👀 Monitors directories for file changes
 │   ├── sync_engine.py    # 🔄 Sync engine: logic & communication
 │   ├── discovery.py      # 📡 Peer discovery via UDP
+|   ├── utils.py          # 📸 Handles Snapshots
 │   └── ...               # 🛠️ Supporting scripts
 ├── logs/                 # 📝 Log files generated at runtime
 └── README.md             # 📖 This documentation file
@@ -64,14 +65,24 @@ ShadowSync/
 
 ### ▶️ Running
 
-Start the main application:
+Start the main application: 
 
 ```bash
 python3 app.py
 ```
-
-- Monitors configured directories
+- You might need sudo permission while running on root DIR.
 - Begins peer discovery on the network
+  
+Start monitor mode:
+```bash
+cd data
+python3 watch_changes.py 
+
+```
+
+- Monitors configured directories (Created, Modified, Deleted and Moved)
+- Triggers Sync process
+
 
 ### 🧪 Testing
 
