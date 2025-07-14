@@ -111,7 +111,7 @@ This project is licensed under the [MIT License](LICENSE).
 ## 🤝 Contact
 
 Questions or contributions?  
-Open an issue or submit a pull request on [GitHub](https://github.com/yourusername/ShadowSync).
+Open an issue or submit a pull request on [GitHub](https://github.com/SiranjeviKrishnan/ShadowSyncMac.git).
 
 <p align="center">
     <img src="assets/bg.jpeg" alt="ShadowSync Background" width="100%" style="max-width:700px; object-fit:cover;"/>
