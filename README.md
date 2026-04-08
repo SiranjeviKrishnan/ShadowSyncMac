@@ -74,10 +74,10 @@ ShadowSyncMac/
 git clone https://github.com/SiranjeviKrishnan/ShadowSyncMac.git
 cd ShadowSyncMac
 
-# Core daemon only
-pip install watchdog
+# Install all required dependencies
+pip install -r requirements.txt
 
-# + Menu bar app support
+# + Menu bar app support (macOS only)
 pip install rumps pyobjc-framework-Cocoa
 ```
 

@@ -3,8 +3,7 @@ ShadowSync - macOS Menu Bar App
 Uses rumps for native macOS menu bar integration.
 Sits in the system tray with live sync status, peer list, and quick actions.
 
-Install: pip install rumps pyobjc-framework-Cocoa
-Run:     python menubar_app.py
+Run: python menubar_app.py
 """
 
 import os
@@ -21,7 +20,7 @@ try:
     RUMPS_AVAILABLE = True
 except ImportError:
     RUMPS_AVAILABLE = False
-    print("rumps not installed. Run: pip install rumps pyobjc-framework-Cocoa")
+    print("rumps not installed. See requirements.txt for dependencies.")
 
 from config.settings import SyncConfig
 from core.watcher import FileWatcher
@@ -278,7 +277,7 @@ class ShadowSyncMenuBar(rumps.App):
 
 def main():
     if not RUMPS_AVAILABLE:
-        print("Install rumps first: pip install rumps pyobjc-framework-Cocoa")
+        print("rumps is not installed. See requirements.txt for dependencies.")
         sys.exit(1)
     app = ShadowSyncMenuBar()
     app.run()

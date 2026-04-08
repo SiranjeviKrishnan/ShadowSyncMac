@@ -3,7 +3,6 @@ ShadowSync macOS App Bundle
 Build with: python setup_app.py py2app
 
 Produces: dist/ShadowSync.app — distributable macOS .app
-Requires:  pip install py2app rumps pyobjc-framework-Cocoa watchdog
 """
 
 from setuptools import setup
