@@ -2,132 +2,166 @@
     <img src="assets/logo.jpeg" alt="ShadowSync Logo" width="120"/>
 </p>
 
-<h1 align="center">ShadowSyncMac 🚀</h1>
+<h1 align="center">ShadowSyncMac</h1>
 <p align="center">
-    <b>Real-time, seamless file sync between Macs on your network.</b>
+    <b>Production-grade, real-time P2P file sync between Macs — with automatic link selection, conflict resolution, and a native menu bar app.</b>
 </p>
 
 ---
 
-## ✨ Overview
+## Overview
 
-**ShadowSyncMac** is a real-time synchronization tool designed to automatically detect and sync changes (added, removed, modified files) between two Macs on the same network.  
-It currently monitors specified directories for file changes, logs these events, and lays the groundwork for full syncing functionality.
+**ShadowSyncMac** is a production-ready peer-to-peer file synchronization tool for macOS. It detects file changes in real time using FSEvents, discovers peers automatically on the local network, transfers files over the best available link (Thunderbolt, LAN, or Tailscale), and resolves conflicts with configurable strategies. A native menu bar app and a real-time web dashboard provide visibility and control without a full GUI window.
 
 ---
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
-ShadowSync/
-├── app.py                # 🚦 Main application entry point
-├── data/
-│   ├── watch_changes.py  # 👀 Monitors directories for file changes
-│   ├── sync_engine.py    # 🔄 Sync engine: logic & communication
-│   ├── discovery.py      # 📡 Peer discovery via UDP
-|   ├── utils.py          # 📸 Handles Snapshots
-│   └── ...               # 🛠️ Supporting scripts
-├── logs/                 # 📝 Log files generated at runtime
-└── README.md             # 📖 This documentation file
+ShadowSyncMac/
+├── core/
+│   ├── watcher.py        # FSEvents file monitoring (debounce + SHA-256 dedup)
+│   ├── discovery.py      # UDP broadcast peer discovery
+│   ├── sync_engine.py    # Priority queue, TCP transfer, retry logic
+│   ├── transport.py      # Auto link selection: Thunderbolt > LAN > Tailscale
+│   ├── conflict.py       # 5-strategy conflict resolution + audit log
+│   └── ipc.py            # Unix socket IPC for dashboard/menu bar
+├── config/
+│   └── settings.py       # Persistent config (~/Library/Application Support/ShadowSync/)
+├── ui/
+│   └── dashboard.html    # Real-time web dashboard
+├── app.py                # CLI entry point (full backend daemon)
+├── menubar_app.py        # Native macOS menu bar app (rumps)
+├── setup_app.py          # py2app bundler → dist/ShadowSync.app
+├── tests/
+│   ├── test_core.py
+│   └── test_conflict_transport.py
+└── pyproject.toml
 ```
 
 ---
 
-## 🌟 Features
+## Features
 
-- ⚡ **Real-time detection** of file system changes: additions, deletions, modifications  
-- 📝 **Detailed logging** of file events with timestamps  
-- 📡 **Network peer discovery** via UDP broadcast  
-- 🔌 **Basic TCP server/client** framework for communication  
-- 🧩 **Modular design** for future extensions (GUI, auto-sync, multi-network)
+- **Real-time file watching** via FSEvents with SHA-256 deduplication and 0.5s debounce
+- **Automatic peer discovery** via UDP broadcast (port 9001, 30s peer timeout)
+- **TCP file transfer** with a priority queue, 4 concurrent workers, and exponential backoff retries
+- **Auto transport selection** — probes RTT and picks the fastest available link:
+  - Thunderbolt Bridge (169.254.x.x) — ~40 Gbit/s
+  - LAN — ~1 Gbit/s
+  - Tailscale VPN (100.64.0.0/10) — ~100 Mbit/s
+- **5-strategy conflict resolution**: `newer_wins`, `larger_wins`, `local_wins`, `remote_wins`, `keep_both`
+- Conflict copies preserved in `~/.shadowsync_conflicts/` with a full audit log
+- **Native macOS menu bar app** — live sync status icons, peer list, pause/resume, macOS notifications
+- **Real-time web dashboard** — active transfers, peer connections, conflict history
+- **Bandwidth throttling** (configurable kbps limit, 0 = unlimited)
+- Ignores: `.DS_Store`, `.git`, `__pycache__`, `*.swp`, `*.tmp`
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
-### 🛠️ Prerequisites
+### Prerequisites
 
-- Python 3.11 (recommended)
-- [`watchdog`](https://pypi.org/project/watchdog/) Python package
-- Network access between Macs (same LAN or direct connection)
+- Python >= 3.11
+- `watchdog` >= 4.0.0
+- *(Menu bar only)* `rumps` >= 0.4.0 + `pyobjc-framework-Cocoa` >= 10.0
+- Network access between Macs (same LAN, Thunderbolt Bridge, or Tailscale)
 
-### 📦 Installation
+### Installation
 
-1. **Clone this repository:**  
-     ```bash
-     git clone https://github.com/yourusername/ShadowSync.git
-     cd ShadowSync
-     ```
-2. **Install dependencies:**  
-     ```bash
-     pip install watchdog
-     ```
+```bash
+git clone https://github.com/SiranjeviKrishnan/ShadowSyncMac.git
+cd ShadowSyncMac
 
-### ▶️ Running
+# Core daemon only
+pip install watchdog
 
-Start the main application: 
+# + Menu bar app support
+pip install rumps pyobjc-framework-Cocoa
+```
 
+### Running
+
+**CLI daemon** (background sync engine):
 ```bash
 python3 app.py
 ```
-- You might need sudo permission while running on root DIR.
-- Begins peer discovery on the network
-  
-Start monitor mode:
-```bash
-cd data
-python3 watch_changes.py 
 
+**Menu bar app** (native macOS integration):
+```bash
+python3 menubar_app.py
 ```
 
-- Monitors configured directories (Created, Modified, Deleted and Moved)
-- Triggers Sync process
-
-
-### 🧪 Testing
-
-- Run the app on two Macs connected to the same network.
-- Make file changes in monitored folders to see real-time logs (added, removed, modified).
-- Logs are saved under `/logs` for review.
-
-### 🐳 Docker
-
-> **Docker support is planned!**  
-> Future updates will include a Dockerfile and images for quick setup.
-
-### ⚡ Thunderbolt
-
-> **Planned:** Thunderbolt direct connection ⚡ and Tailscale VPN integration 🌐.
+**Build a distributable `.app` bundle:**
+```bash
+pip install py2app
+python3 setup_app.py py2app
+# Output: dist/ShadowSync.app
+```
 
 ---
 
-## 📝 TODO
+## Configuration
 
-- [ ] ⚡ Thunderbolt direct connection for faster syncing (**priority**)
-- [ ] 🌐 Tailscale VPN support for secure remote syncing
-- [ ] 🖥️ Graphical User Interface (GUI)
-- [ ] ⚔️ Conflict detection & resolution
-- [ ] 🤖 Automate sync actions with user confirmation
-- [ ] 🆔 Enhanced peer discovery (user/device identification)
-- [ ] 🐳 Docker support for cross-platform deployment
+Config file: `~/Library/Application Support/ShadowSync/config.json`
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `watch_dirs` | `["~/Documents"]` | Directories to monitor and sync |
+| `sync_port` | `9000` | TCP port for file transfers |
+| `conflict_strategy` | `newer_wins` | `newer_wins` \| `larger_wins` \| `local_wins` \| `remote_wins` \| `keep_both` |
+| `auto_sync` | `true` | Sync automatically on change |
+| `sync_deletions` | `true` | Propagate deletions to peers |
+| `bandwidth_limit_kbps` | `0` | Upload cap in kbps (0 = unlimited) |
+| `max_file_size_mb` | `500` | Skip files larger than this |
+| `log_level` | `INFO` | `DEBUG` \| `INFO` \| `WARNING` |
+| `show_notifications` | `true` | macOS notifications on sync events |
 
 ---
 
-## 📄 License
+## Testing
+
+```bash
+pytest tests/
+```
+
+To test end-to-end, run `python3 app.py` (or the menu bar app) on two Macs on the same network and make file changes in a watched directory.
+
+---
+
+## Logging
+
+Logs are written to:
+```
+~/Library/Application Support/ShadowSync/logs/shadowsync.log
+```
+
+---
+
+## Roadmap
+
+- [ ] mDNS/Bonjour peer discovery (supplement UDP broadcast)
+- [ ] End-to-end encryption for transfers
+- [ ] Multi-directory management in the dashboard
+- [ ] Windows / Linux port
+
+---
+
+## License
 
 This project is licensed under the [MIT License](LICENSE).
 
 ---
 
-## 🤝 Contact
+## Contact
 
-Questions or contributions?  
-Open an issue or submit a pull request on [GitHub](https://github.com/SiranjeviKrishnan/ShadowSyncMac.git).
+Questions or contributions? Open an issue or submit a pull request on [GitHub](https://github.com/SiranjeviKrishnan/ShadowSyncMac).
 
 <p align="center">
     <img src="assets/bg.jpeg" alt="ShadowSync Background" width="100%" style="max-width:700px; object-fit:cover;"/>
 </p>
 
 <p align="center">
-    <b>Thank you for checking out ShadowSync! 💙</b>
+    <b>Thank you for checking out ShadowSync!</b>
 </p>
