@@ -287,6 +287,19 @@ class _DashboardHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
+        if self.path in ("/", "/dashboard"):
+            dashboard = Path(__file__).parent.parent / "ui" / "dashboard.html"
+            try:
+                body = dashboard.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            except OSError:
+                self.send_response(404)
+                self.end_headers()
+            return
         if self.path == "/api/status":
             stats = self.engine.get_stats() if self.engine else {}
             peers = [p.to_dict() for p in self.registry.get_all()] if self.registry else []
