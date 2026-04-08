@@ -84,7 +84,7 @@ class ShadowSyncMenuBar(rumps.App):
             rumps.MenuItem("⚙  Preferences…", callback=self.open_preferences),
             rumps.MenuItem("ℹ  About ShadowSync", callback=self.show_about),
             None,
-            rumps.MenuItem("Quit ShadowSync", callback=self.quit_app),
+            #rumps.MenuItem("Quit ShadowSync", callback=self.quit_app),
         ]
 
     # ── Backend startup ───────────────────────────────────────────────────────
@@ -264,15 +264,15 @@ class ShadowSyncMenuBar(rumps.App):
             ),
         )
 
-    @rumps.clicked("Quit ShadowSync")
-    def quit_app(self, sender):
-        if self._watcher:
-            self._watcher.stop()
-        if self._discovery:
-            self._discovery.stop()
-        if self._engine:
-            self._engine.stop()
-        rumps.quit_application()
+    # @rumps.clicked("Quit ShadowSync")
+    # def quit_app(self, sender):
+    #     if self._watcher:
+    #         self._watcher.stop()
+    #     if self._discovery:
+    #         self._discovery.stop()
+    #     if self._engine:
+    #         self._engine.stop()
+    #     rumps.quit_application()
 
 
 def main():
