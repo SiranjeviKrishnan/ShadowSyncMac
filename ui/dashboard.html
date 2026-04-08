@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ShadowSync</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0d0d0f;
+    --surface: #161618;
+    --surface2: #1e1e21;
+    --surface3: #252528;
+    --border: rgba(255,255,255,0.07);
+    --border-active: rgba(255,255,255,0.15);
+    --text: #f0f0f2;
+    --text-muted: #6e6e7a;
+    --text-dim: #3a3a44;
+    --accent: #4f8ef7;
+    --accent-glow: rgba(79,142,247,0.2);
+    --green: #30d158;
+    --green-dim: rgba(48,209,88,0.12);
+    --yellow: #ffd60a;
+    --red: #ff453a;
+    --purple: #bf5af2;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Titlebar */
+  .titlebar {
+    height: 52px;
+    background: rgba(22,22,24,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .traffic-lights {
+    display: flex;
+    gap: 8px;
+  }
+  .tl {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: filter 0.15s;
+  }
+  .tl:hover { filter: brightness(1.3); }
+  .tl.red { background: #ff5f57; }
+  .tl.yellow { background: #febc2e; }
+  .tl.green { background: #28c840; }
+
+  .titlebar-title {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.01em;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid rgba(48,209,88,0.2);
+  }
+  .status-pill.inactive {
+    background: rgba(110,110,122,0.12);
+    color: var(--text-muted);
+    border-color: var(--border);
+  }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .status-pill .status-dot { animation: pulse 2s infinite; }
+  .status-pill.inactive .status-dot { animation: none; }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Layout */
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 1fr;
+    height: calc(100vh - 52px);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 16px 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: 0 12px;
+    margin-bottom: 4px;
+  }
+  .sidebar-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    padding: 8px 8px 4px;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--text-muted);
+    transition: all 0.12s;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active {
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-weight: 500;
+  }
+  .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+  .nav-badge {
+    margin-left: auto;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+
+  .sidebar-spacer { flex: 1; }
+  .sidebar-footer {
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .version-tag {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    text-align: center;
+  }
+
+  /* Main Content */
+  .main {
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  .page { display: none; padding: 28px; }
+  .page.active { display: block; }
+
+  /* Page Header */
+  .page-header {
+    margin-bottom: 24px;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+    transition: border-color 0.15s;
+  }
+  .card:hover { border-color: var(--border-active); }
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .card-action {
+    font-size: 12px;
+    color: var(--accent);
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .card-action:hover { text-decoration: underline; }
+
+  /* Stats row */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 500;
+  }
+  .stat-card.accent .stat-value { color: var(--accent); }
+  .stat-card.green .stat-value { color: var(--green); }
+  .stat-card.purple .stat-value { color: var(--purple); }
+  .stat-card.yellow .stat-value { color: var(--yellow); }
+
+  /* Peers */
+  .peer-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .peer-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .peer-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: var(--surface3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    border: 1px solid var(--border);
+  }
+  .peer-info { flex: 1; min-width: 0; }
+  .peer-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .peer-detail {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+  .peer-status {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--green);
+  }
+  .peer-status.syncing { color: var(--accent); }
+  .peer-status.offline { color: var(--text-muted); }
+
+  /* Activity log */
+  .log-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    animation: slideIn 0.2s ease;
+  }
+  .log-entry:last-child { border-bottom: none; }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .log-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .log-icon.created { background: rgba(48,209,88,0.15); color: var(--green); }
+  .log-icon.modified { background: rgba(79,142,247,0.15); color: var(--accent); }
+  .log-icon.deleted { background: rgba(255,69,58,0.15); color: var(--red); }
+  .log-icon.received { background: rgba(191,90,242,0.15); color: var(--purple); }
+  .log-body { flex: 1; min-width: 0; }
+  .log-path {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .log-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+  .log-time {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    white-space: nowrap;
+  }
+
+  /* Watched dirs */
+  .dir-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .dir-item:last-child { border-bottom: none; }
+  .dir-icon { font-size: 20px; }
+  .dir-info { flex: 1; min-width: 0; }
+  .dir-path {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dir-stats { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .dir-remove {
+    font-size: 16px;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: all 0.12s;
+  }
+  .dir-remove:hover { color: var(--red); background: rgba(255,69,58,0.1); }
+
+  /* Sync indicator */
+  .sync-bar {
+    height: 3px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .sync-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    border-radius: 2px;
+    animation: syncProgress 2s ease-in-out infinite;
+    width: 0%;
+  }
+  .sync-bar-fill.active {
+    animation: syncProgress 2s ease-in-out infinite;
+  }
+  @keyframes syncProgress {
+    0% { width: 0%; margin-left: 0; }
+    50% { width: 60%; margin-left: 20%; }
+    100% { width: 0%; margin-left: 100%; }
+  }
+
+  /* Toggle */
+  .toggle {
+    width: 36px;
+    height: 20px;
+    background: var(--surface3);
+    border-radius: 10px;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle.on::after { transform: translateX(16px); }
+
+  /* Setting row */
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .setting-row:last-child { border-bottom: none; }
+  .setting-info .setting-name {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+  .setting-info .setting-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* Button */
+  .btn {
+    padding: 7px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.12s;
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #6ba0f9; transform: translateY(-1px); }
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--surface3); }
+  .btn-danger {
+    background: rgba(255,69,58,0.12);
+    color: var(--red);
+    border: 1px solid rgba(255,69,58,0.2);
+  }
+  .btn-danger:hover { background: rgba(255,69,58,0.2); }
+
+  /* Select */
+  select {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+  select:focus { border-color: var(--accent); }
+
+  /* Transfer progress */
+  .transfer-item {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .transfer-item:last-child { border-bottom: none; }
+  .transfer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .transfer-name { font-size: 12px; font-family: var(--mono); }
+  .transfer-pct { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+  .progress-bar {
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--purple));
+    transition: width 0.3s ease;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-text { font-size: 13px; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div class="titlebar">
+  <div class="traffic-lights">
+    <div class="tl red"></div>
+    <div class="tl yellow"></div>
+    <div class="tl green"></div>
+  </div>
+  <div class="titlebar-title">ShadowSync</div>
+  <div class="status-pill" id="mainStatusPill">
+    <div class="status-dot"></div>
+    <span>Active</span>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Overview</div>
+      <div class="nav-item active" onclick="navigate('dashboard')">
+        <span class="nav-icon">⊹</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="navigate('activity')">
+        <span class="nav-icon">◎</span> Activity
+        <span class="nav-badge" id="activityBadge">3</span>
+      </div>
+      <div class="nav-item" onclick="navigate('transfers')">
+        <span class="nav-icon">↕</span> Transfers
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Network</div>
+      <div class="nav-item" onclick="navigate('peers')">
+        <span class="nav-icon">◈</span> Peers
+        <span class="nav-badge" id="peerBadge">2</span>
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Config</div>
+      <div class="nav-item" onclick="navigate('folders')">
+        <span class="nav-icon">▤</span> Folders
+      </div>
+      <div class="nav-item" onclick="navigate('settings')">
+        <span class="nav-icon">⚙</span> Settings
+      </div>
+    </div>
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-footer">
+      <div class="version-tag">ShadowSync v2.0.0</div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Dashboard -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">System overview and sync status</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card green">
+          <div class="stat-value" id="statSent">0</div>
+          <div class="stat-label">Files Sent</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-value" id="statReceived">0</div>
+          <div class="stat-label">Files Received</div>
+        </div>
+        <div class="stat-card purple">
+          <div class="stat-value" id="statPeers">2</div>
+          <div class="stat-label">Peers Online</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-value" id="statErrors">0</div>
+          <div class="stat-label">Errors</div>
+        </div>
+      </div>
+
+      <!-- Sync health -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Sync Activity</div>
+          <div class="card-action" onclick="navigate('activity')">View all →</div>
+        </div>
+        <div id="dashboardLog">
+          <div class="log-entry">
+            <div class="log-icon created">↑</div>
+            <div class="log-body">
+              <div class="log-path">~/Documents/project/notes.md</div>
+              <div class="log-meta">Sent to MacBook Air · 2.1 KB</div>
+            </div>
+            <div class="log-time">just now</div>
+          </div>
+          <div class="log-entry">
+            <div class="log-icon received">↓</div>
+            <div class="log-body">
+              <div class="log-path">~/Documents/design/mockup_v3.fig</div>
+              <div class="log-meta">Received from Mac Studio · 4.8 MB</div>
+            </div>
+            <div class="log-time">12s ago</div>
+          </div>
+          <div class="log-entry">
+            <div class="log-icon modified">~</div>
+            <div class="log-body">
+              <div class="log-path">~/Documents/report.docx</div>
+              <div class="log-meta">Modified · Synced to 2 peers · 128 KB</div>
+            </div>
+            <div class="log-time">1m ago</div>
+          </div>
+        </div>
+        <div class="sync-bar"><div class="sync-bar-fill active" id="syncBarFill"></div></div>
+      </div>
+
+      <!-- Peers preview -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Connected Peers</div>
+          <div class="card-action" onclick="navigate('peers')">Manage →</div>
+        </div>
+        <div class="peer-item">
+          <div class="peer-avatar">💻</div>
+          <div class="peer-info">
+            <div class="peer-name">MacBook Air (M2)</div>
+            <div class="peer-detail">192.168.1.42 · port 9000</div>
+          </div>
+          <div class="peer-status">
+            <div class="status-dot"></div> Syncing
+          </div>
+        </div>
+        <div class="peer-item">
+          <div class="peer-avatar">🖥</div>
+          <div class="peer-info">
+            <div class="peer-name">Mac Studio</div>
+            <div class="peer-detail">192.168.1.15 · port 9000</div>
+          </div>
+          <div class="peer-status">
+            <div class="status-dot"></div> Online
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity -->
+    <div class="page" id="page-activity">
+      <div class="page-header">
+        <div class="page-title">Activity Log</div>
+        <div class="page-subtitle">All file sync events in real-time</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Recent Events</div>
+          <button class="btn btn-secondary" onclick="clearLog()">Clear</button>
+        </div>
+        <div id="activityLog"></div>
+      </div>
+    </div>
+
+    <!-- Transfers -->
+    <div class="page" id="page-transfers">
+      <div class="page-header">
+        <div class="page-title">Transfers</div>
+        <div class="page-subtitle">Active and recent file transfers</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Active Transfers</div>
+        </div>
+        <div id="transfersList">
+          <div class="transfer-item">
+            <div class="transfer-header">
+              <div class="transfer-name">project_assets.zip → MacBook Air</div>
+              <div class="transfer-pct" id="tp1">67%</div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="pb1" style="width:67%"></div></div>
+          </div>
+          <div class="transfer-item">
+            <div class="transfer-header">
+              <div class="transfer-name">video_draft.mov → Mac Studio</div>
+              <div class="transfer-pct" id="tp2">23%</div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="pb2" style="width:23%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Peers -->
+    <div class="page" id="page-peers">
+      <div class="page-header">
+        <div class="page-title">Peers</div>
+        <div class="page-subtitle">Discovered devices on your network</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Connected (2)</div>
+          <button class="btn btn-secondary" onclick="scanPeers()">⟳ Scan</button>
+        </div>
+        <div class="peer-item">
+          <div class="peer-avatar">💻</div>
+          <div class="peer-info">
+            <div class="peer-name">MacBook Air (M2)</div>
+            <div class="peer-detail">192.168.1.42 · ShadowSync v2.0 · delta sync</div>
+          </div>
+          <div class="peer-status"><div class="status-dot"></div> Online</div>
+        </div>
+        <div class="peer-item">
+          <div class="peer-avatar">🖥</div>
+          <div class="peer-info">
+            <div class="peer-name">Mac Studio</div>
+            <div class="peer-detail">192.168.1.15 · ShadowSync v2.0 · delta sync</div>
+          </div>
+          <div class="peer-status"><div class="status-dot"></div> Online</div>
+        </div>
+        <div class="peer-item">
+          <div class="peer-avatar" style="opacity:0.4">🖥</div>
+          <div class="peer-info">
+            <div class="peer-name" style="color:var(--text-muted)">Mac mini (office)</div>
+            <div class="peer-detail">192.168.1.8 · last seen 2h ago</div>
+          </div>
+          <div class="peer-status offline">Offline</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Folders -->
+    <div class="page" id="page-folders">
+      <div class="page-header">
+        <div class="page-title">Watched Folders</div>
+        <div class="page-subtitle">Directories monitored for changes</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Active Monitors</div>
+          <button class="btn btn-primary" onclick="addFolder()">+ Add Folder</button>
+        </div>
+        <div id="folderList">
+          <div class="dir-item">
+            <div class="dir-icon">📁</div>
+            <div class="dir-info">
+              <div class="dir-path">~/Documents</div>
+              <div class="dir-stats">1,248 files · watching recursively</div>
+            </div>
+            <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
+          </div>
+          <div class="dir-item">
+            <div class="dir-icon">📁</div>
+            <div class="dir-info">
+              <div class="dir-path">~/Desktop</div>
+              <div class="dir-stats">83 files · watching recursively</div>
+            </div>
+            <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
+          </div>
+          <div class="dir-item">
+            <div class="dir-icon">📁</div>
+            <div class="dir-info">
+              <div class="dir-path">~/Projects/ShadowSyncMac</div>
+              <div class="dir-stats">312 files · watching recursively</div>
+            </div>
+            <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div class="page-title">Settings</div>
+        <div class="page-subtitle">Configure sync behaviour and preferences</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Sync Behaviour</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Auto Sync</div>
+            <div class="setting-desc">Automatically sync when changes are detected</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Sync Deletions</div>
+            <div class="setting-desc">Propagate file deletions to peers</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Conflict Strategy</div>
+            <div class="setting-desc">How to handle conflicting changes</div>
+          </div>
+          <select>
+            <option>Newer wins</option>
+            <option>Larger wins</option>
+            <option>Local wins</option>
+            <option>Keep both</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Max File Size</div>
+            <div class="setting-desc">Skip files larger than this limit</div>
+          </div>
+          <select>
+            <option>100 MB</option>
+            <option selected>500 MB</option>
+            <option>1 GB</option>
+            <option>Unlimited</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Notifications & Logging</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Desktop Notifications</div>
+            <div class="setting-desc">Show macOS notifications for sync events</div>
+          </div>
+          <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Log Level</div>
+            <div class="setting-desc">Verbosity of the log file</div>
+          </div>
+          <select>
+            <option>DEBUG</option>
+            <option selected>INFO</option>
+            <option>WARNING</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:12px">Danger Zone</div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Reset All Settings</div>
+            <div class="setting-desc">Restore defaults and clear peer history</div>
+          </div>
+          <button class="btn btn-danger">Reset</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── Navigation ────────────────────────────────────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (page === 'activity') {
+    document.getElementById('activityBadge').textContent = '0';
+  }
+}
+
+// ── Live activity log ─────────────────────────────────────────────────────────
+const events = [
+  { type: 'created', icon: '↑', path: '~/Documents/notes.md', meta: 'Sent to MacBook Air · 2.1 KB' },
+  { type: 'received', icon: '↓', path: '~/Documents/design/mockup_v3.fig', meta: 'Received from Mac Studio · 4.8 MB' },
+  { type: 'modified', icon: '~', path: '~/Documents/report.docx', meta: 'Modified · Synced to 2 peers' },
+  { type: 'deleted', icon: '✕', path: '~/Desktop/old_draft.txt', meta: 'Deleted · Propagated to peers' },
+  { type: 'created', icon: '↑', path: '~/Projects/ShadowSyncMac/core/engine.py', meta: 'Sent to MacBook Air · 8.3 KB' },
+  { type: 'received', icon: '↓', path: '~/Documents/budget_2026.xlsx', meta: 'Received from Mac Studio · 42 KB' },
+];
+
+let eventIdx = 0;
+let sentCount = 0, receivedCount = 0;
+
+function formatTime(d) {
+  return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function addLogEntry() {
+  const e = events[eventIdx % events.length];
+  eventIdx++;
+
+  const now = new Date();
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <div class="log-icon ${e.type}">${e.icon}</div>
+    <div class="log-body">
+      <div class="log-path">${e.path}</div>
+      <div class="log-meta">${e.meta}</div>
+    </div>
+    <div class="log-time">${formatTime(now)}</div>
+  `;
+
+  const log = document.getElementById('activityLog');
+  log.prepend(entry);
+  while (log.children.length > 30) log.removeChild(log.lastChild);
+
+  // Update dashboard log too
+  const dl = document.getElementById('dashboardLog');
+  const dEntry = entry.cloneNode(true);
+  dl.prepend(dEntry);
+  while (dl.children.length > 4) dl.removeChild(dl.lastChild);
+
+  // Update stats
+  if (e.type === 'created' || e.type === 'modified') {
+    sentCount++;
+    document.getElementById('statSent').textContent = sentCount;
+  } else if (e.type === 'received') {
+    receivedCount++;
+    document.getElementById('statReceived').textContent = receivedCount;
+  }
+
+  // Badge
+  const badge = document.getElementById('activityBadge');
+  const current = parseInt(badge.textContent) || 0;
+  badge.textContent = current + 1;
+}
+
+// Initial entries
+for (let i = 0; i < 6; i++) {
+  setTimeout(() => addLogEntry(), i * 200);
+}
+
+// Simulate live sync
+setInterval(() => {
+  addLogEntry();
+}, 4000 + Math.random() * 3000);
+
+// ── Transfers simulation ───────────────────────────────────────────────────────
+let p1 = 67, p2 = 23;
+setInterval(() => {
+  p1 = Math.min(100, p1 + Math.random() * 5);
+  p2 = Math.min(100, p2 + Math.random() * 3);
+  document.getElementById('pb1').style.width = p1 + '%';
+  document.getElementById('tp1').textContent = Math.round(p1) + '%';
+  document.getElementById('pb2').style.width = p2 + '%';
+  document.getElementById('tp2').textContent = Math.round(p2) + '%';
+  if (p1 >= 100) p1 = 0;
+  if (p2 >= 100) p2 = 0;
+}, 500);
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function clearLog() {
+  document.getElementById('activityLog').innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">No events yet</div></div>';
+}
+
+function addFolder() {
+  const path = prompt('Enter directory path to watch:');
+  if (!path) return;
+  const item = document.createElement('div');
+  item.className = 'dir-item';
+  item.innerHTML = `
+    <div class="dir-icon">📁</div>
+    <div class="dir-info">
+      <div class="dir-path">${path}</div>
+      <div class="dir-stats">Scanning… · watching recursively</div>
+    </div>
+    <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
+  `;
+  document.getElementById('folderList').appendChild(item);
+}
+
+function scanPeers() {
+  const btn = event.currentTarget;
+  btn.textContent = '⟳ Scanning…';
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.textContent = '⟳ Scan';
+    btn.disabled = false;
+  }, 2000);
+}
+</script>
+</body>
+</html>
