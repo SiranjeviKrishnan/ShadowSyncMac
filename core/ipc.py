@@ -29,6 +29,7 @@ import os
 import socket
 import threading
 import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -255,9 +256,111 @@ class IPCServer:
                 self._subscribers.remove(s)
 
 
-# ── Singleton ─────────────────────────────────────────────────────────────────
+# ── HTTP Bridge (Dashboard API) ───────────────────────────────────────────────
+
+HTTP_BRIDGE_PORT = 9090
+
+
+class _DashboardHandler(BaseHTTPRequestHandler):
+    """Serves a simple JSON REST API so the dashboard HTML can poll live data."""
+
+    engine = None
+    registry = None
+    ipc_ref = None
+
+    def log_message(self, fmt, *args):
+        pass  # silence default access log
+
+    def _send_json(self, data: dict, status: int = 200):
+        body = json.dumps(data).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST")
+        self.end_headers()
+
+    def do_GET(self):
+        if self.path == "/api/status":
+            stats = self.engine.get_stats() if self.engine else {}
+            peers = [p.to_dict() for p in self.registry.get_all()] if self.registry else []
+            self._send_json({"stats": stats, "peers": peers, "paused": self.ipc_ref._paused if self.ipc_ref else False})
+        elif self.path == "/api/peers":
+            peers = [p.to_dict() for p in self.registry.get_all()] if self.registry else []
+            self._send_json({"peers": peers})
+        elif self.path == "/api/transfers":
+            transfers = self.engine.get_active_transfers() if self.engine else []
+            self._send_json({"transfers": transfers})
+        elif self.path == "/api/conflicts":
+            history = self.engine.get_conflict_history(20) if self.engine else []
+            self._send_json({"history": history})
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        if self.path in ("/api/pause", "/api/resume"):
+            ipc = self.ipc_ref
+            if ipc:
+                if self.path == "/api/pause" and not ipc._paused:
+                    if ipc._watcher:
+                        ipc._watcher.stop()
+                    ipc._paused = True
+                elif self.path == "/api/resume" and ipc._paused:
+                    if ipc._watcher:
+                        ipc._watcher.start()
+                    ipc._paused = False
+            self._send_json({"paused": ipc._paused if ipc else False})
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+class HTTPBridge:
+    """
+    Lightweight HTTP server on localhost:9090 so the dashboard HTML file
+    can fetch live data without requiring a WebSocket or Unix socket proxy.
+    """
+
+    def __init__(self, port: int = HTTP_BRIDGE_PORT):
+        self._port = port
+        self._server: HTTPServer | None = None
+        self._thread: threading.Thread | None = None
+
+    def attach(self, engine, registry, ipc_server: "IPCServer"):
+        _DashboardHandler.engine = engine
+        _DashboardHandler.registry = registry
+        _DashboardHandler.ipc_ref = ipc_server
+
+    def start(self):
+        self._server = HTTPServer(("127.0.0.1", self._port), _DashboardHandler)
+        self._thread = threading.Thread(
+            target=self._server.serve_forever,
+            daemon=True,
+            name="http-bridge",
+        )
+        self._thread.start()
+        logger.info(f"[HTTP] Dashboard API listening on http://127.0.0.1:{self._port}/api/")
+
+    def stop(self):
+        if self._server:
+            self._server.shutdown()
+
+
+# ── Singletons ────────────────────────────────────────────────────────────────
 _ipc_server = IPCServer()
+_http_bridge = HTTPBridge()
 
 
 def get_ipc_server() -> IPCServer:
     return _ipc_server
+
+
+def get_http_bridge() -> HTTPBridge:
+    return _http_bridge

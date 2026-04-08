@@ -95,6 +95,8 @@ def send_msg(sock, msg_type: MsgType, payload: dict):
 def recv_msg(sock) -> tuple:
     header = recv_exact(sock, HEADER_SIZE)
     msg_type, payload_len = decode_header(header)
+    if payload_len == 0:
+        return msg_type, {}
     body = recv_exact(sock, payload_len)
     return msg_type, json.loads(body.decode("utf-8"))
 

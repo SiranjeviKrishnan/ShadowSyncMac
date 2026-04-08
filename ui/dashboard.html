@@ -953,14 +953,58 @@ function addFolder() {
   document.getElementById('folderList').appendChild(item);
 }
 
+const API = 'http://127.0.0.1:9090/api';
+
+// ── Live data ─────────────────────────────────────────────────────────────────
+function renderPeers(peers) {
+  const list = document.getElementById('peersListFull');
+  if (!peers || peers.length === 0) {
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">◈</div><div class="empty-text">No peers discovered yet.<br>Start ShadowSync on another Mac on the same WiFi.</div></div>';
+    return;
+  }
+  list.innerHTML = peers.map(p => {
+    const ago = Math.round(Date.now() / 1000 - p.last_seen);
+    return `<div class="dir-item">
+      <div class="dir-icon">🖥</div>
+      <div class="dir-info">
+        <div class="dir-path">${p.hostname}</div>
+        <div class="dir-stats">${p.ip}:${p.port} · v${p.version} · seen ${ago}s ago</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function pollStatus() {
+  fetch(API + '/status')
+    .then(r => r.json())
+    .then(data => {
+      const peers = data.peers || [];
+      peerCount = peers.length;
+      const stats = data.stats || {};
+      sentCount = stats.sent || 0;
+      receivedCount = stats.received || 0;
+      errorCount = stats.errors || 0;
+      updateStats();
+      setSyncBarActive(peerCount > 0);
+      renderPeers(peers);
+    })
+    .catch(() => {});
+}
+
 function scanPeers() {
   const btn = event.currentTarget;
   btn.textContent = '⟳ Scanning…';
   btn.disabled = true;
-  setTimeout(() => {
-    btn.textContent = '⟳ Scan';
-    btn.disabled = false;
-  }, 2000);
+  fetch(API + '/peers')
+    .then(r => r.json())
+    .then(data => {
+      renderPeers(data.peers || []);
+    })
+    .catch(() => {})
+    .finally(() => {
+      btn.textContent = '⟳ Scan';
+      btn.disabled = false;
+    });
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
@@ -968,6 +1012,9 @@ updateStats();
 setSyncBarActive(false);
 document.getElementById('activityLog').innerHTML =
   '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">Waiting for sync activity…</div></div>';
+
+pollStatus();
+setInterval(pollStatus, 5000);
 </script>
 </body>
 </html>

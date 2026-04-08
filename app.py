@@ -16,7 +16,7 @@ from config.settings import SyncConfig, LOG_DIR
 from core.watcher import FileWatcher
 from core.discovery import UDPDiscovery, PeerRegistry
 from core.sync_engine import SyncEngine
-from core.ipc import get_ipc_server
+from core.ipc import get_ipc_server, get_http_bridge
 
 
 def setup_logging(config: SyncConfig) -> logging.Logger:
@@ -57,6 +57,7 @@ def main():
         sys.exit(1)
 
     ipc = get_ipc_server()
+    http = get_http_bridge()
 
     def on_status(event_type: str, detail: str):
         print(f"\033[96m  ▸ {event_type}: {detail}\033[0m")
@@ -80,8 +81,9 @@ def main():
     discovery = UDPDiscovery(config.sync_port, registry)
     watcher = FileWatcher(config.watch_dirs, engine.on_file_change)
 
-    # Wire IPC
+    # Wire IPC + HTTP bridge
     ipc.attach(engine, watcher, registry)
+    http.attach(engine, registry, ipc)
 
     def shutdown(sig, frame):
         logger.info("Shutting down…")
@@ -90,6 +92,7 @@ def main():
         discovery.stop()
         engine.stop()
         ipc.stop()
+        http.stop()
         stats = engine.get_stats()
         print(f"\033[93m[ShadowSync] Session: sent={stats['sent']} "
               f"received={stats['received']} errors={stats['errors']} "
@@ -103,11 +106,12 @@ def main():
     discovery.start()
     watcher.start()
     ipc.start()
+    http.start()
 
     logger.info(f"Watching: {config.watch_dirs}")
-    logger.info(f"Sync port: {config.sync_port} | IPC: /tmp/shadowsync.sock")
+    logger.info(f"Sync port: {config.sync_port} | IPC: /tmp/shadowsync.sock | HTTP: http://127.0.0.1:9090")
     print(f"\033[92m[ShadowSync] Running — {len(config.watch_dirs)} folder(s), "
-          f"IPC at /tmp/shadowsync.sock\033[0m\n")
+          f"IPC at /tmp/shadowsync.sock, dashboard API at http://127.0.0.1:9090\033[0m\n")
 
     while True:
         time.sleep(10)
