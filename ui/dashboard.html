@@ -569,9 +569,9 @@
     <div class="tl green"></div>
   </div>
   <div class="titlebar-title">ShadowSync</div>
-  <div class="status-pill" id="mainStatusPill">
+  <div class="status-pill inactive" id="mainStatusPill">
     <div class="status-dot"></div>
-    <span>Active</span>
+    <span>No peers</span>
   </div>
 </div>
 
@@ -586,7 +586,7 @@
       </div>
       <div class="nav-item" onclick="navigate('activity')">
         <span class="nav-icon">◎</span> Activity
-        <span class="nav-badge" id="activityBadge">3</span>
+        <span class="nav-badge" id="activityBadge" style="display:none">0</span>
       </div>
       <div class="nav-item" onclick="navigate('transfers')">
         <span class="nav-icon">↕</span> Transfers
@@ -596,7 +596,7 @@
       <div class="sidebar-label">Network</div>
       <div class="nav-item" onclick="navigate('peers')">
         <span class="nav-icon">◈</span> Peers
-        <span class="nav-badge" id="peerBadge">2</span>
+        <span class="nav-badge" id="peerBadge" style="display:none">0</span>
       </div>
     </div>
     <div class="sidebar-section">
@@ -634,7 +634,7 @@
           <div class="stat-label">Files Received</div>
         </div>
         <div class="stat-card purple">
-          <div class="stat-value" id="statPeers">2</div>
+          <div class="stat-value" id="statPeers">0</div>
           <div class="stat-label">Peers Online</div>
         </div>
         <div class="stat-card yellow">
@@ -650,29 +650,9 @@
           <div class="card-action" onclick="navigate('activity')">View all →</div>
         </div>
         <div id="dashboardLog">
-          <div class="log-entry">
-            <div class="log-icon created">↑</div>
-            <div class="log-body">
-              <div class="log-path">~/Documents/project/notes.md</div>
-              <div class="log-meta">Sent to MacBook Air · 2.1 KB</div>
-            </div>
-            <div class="log-time">just now</div>
-          </div>
-          <div class="log-entry">
-            <div class="log-icon received">↓</div>
-            <div class="log-body">
-              <div class="log-path">~/Documents/design/mockup_v3.fig</div>
-              <div class="log-meta">Received from Mac Studio · 4.8 MB</div>
-            </div>
-            <div class="log-time">12s ago</div>
-          </div>
-          <div class="log-entry">
-            <div class="log-icon modified">~</div>
-            <div class="log-body">
-              <div class="log-path">~/Documents/report.docx</div>
-              <div class="log-meta">Modified · Synced to 2 peers · 128 KB</div>
-            </div>
-            <div class="log-time">1m ago</div>
+          <div class="empty-state" id="dashboardEmptyState">
+            <div class="empty-icon">◎</div>
+            <div class="empty-text">No sync activity yet — waiting for file changes</div>
           </div>
         </div>
         <div class="sync-bar"><div class="sync-bar-fill active" id="syncBarFill"></div></div>
@@ -684,24 +664,10 @@
           <div class="card-title">Connected Peers</div>
           <div class="card-action" onclick="navigate('peers')">Manage →</div>
         </div>
-        <div class="peer-item">
-          <div class="peer-avatar">💻</div>
-          <div class="peer-info">
-            <div class="peer-name">MacBook Air (M2)</div>
-            <div class="peer-detail">192.168.1.42 · port 9000</div>
-          </div>
-          <div class="peer-status">
-            <div class="status-dot"></div> Syncing
-          </div>
-        </div>
-        <div class="peer-item">
-          <div class="peer-avatar">🖥</div>
-          <div class="peer-info">
-            <div class="peer-name">Mac Studio</div>
-            <div class="peer-detail">192.168.1.15 · port 9000</div>
-          </div>
-          <div class="peer-status">
-            <div class="status-dot"></div> Online
+        <div id="dashboardPeers">
+          <div class="empty-state">
+            <div class="empty-icon">◈</div>
+            <div class="empty-text">No peers found — run ShadowSync on another Mac on the same network</div>
           </div>
         </div>
       </div>
@@ -733,19 +699,9 @@
           <div class="card-title">Active Transfers</div>
         </div>
         <div id="transfersList">
-          <div class="transfer-item">
-            <div class="transfer-header">
-              <div class="transfer-name">project_assets.zip → MacBook Air</div>
-              <div class="transfer-pct" id="tp1">67%</div>
-            </div>
-            <div class="progress-bar"><div class="progress-fill" id="pb1" style="width:67%"></div></div>
-          </div>
-          <div class="transfer-item">
-            <div class="transfer-header">
-              <div class="transfer-name">video_draft.mov → Mac Studio</div>
-              <div class="transfer-pct" id="tp2">23%</div>
-            </div>
-            <div class="progress-bar"><div class="progress-fill" id="pb2" style="width:23%"></div></div>
+          <div class="empty-state">
+            <div class="empty-icon">↕</div>
+            <div class="empty-text">No active transfers</div>
           </div>
         </div>
       </div>
@@ -759,32 +715,14 @@
       </div>
       <div class="card">
         <div class="card-header">
-          <div class="card-title">Connected (2)</div>
+          <div class="card-title" id="peersCardTitle">Connected (0)</div>
           <button class="btn btn-secondary" onclick="scanPeers()">⟳ Scan</button>
         </div>
-        <div class="peer-item">
-          <div class="peer-avatar">💻</div>
-          <div class="peer-info">
-            <div class="peer-name">MacBook Air (M2)</div>
-            <div class="peer-detail">192.168.1.42 · ShadowSync v2.0 · delta sync</div>
+        <div id="peersListFull">
+          <div class="empty-state">
+            <div class="empty-icon">◈</div>
+            <div class="empty-text">No peers discovered yet.<br>Start ShadowSync on another Mac on the same WiFi.</div>
           </div>
-          <div class="peer-status"><div class="status-dot"></div> Online</div>
-        </div>
-        <div class="peer-item">
-          <div class="peer-avatar">🖥</div>
-          <div class="peer-info">
-            <div class="peer-name">Mac Studio</div>
-            <div class="peer-detail">192.168.1.15 · ShadowSync v2.0 · delta sync</div>
-          </div>
-          <div class="peer-status"><div class="status-dot"></div> Online</div>
-        </div>
-        <div class="peer-item">
-          <div class="peer-avatar" style="opacity:0.4">🖥</div>
-          <div class="peer-info">
-            <div class="peer-name" style="color:var(--text-muted)">Mac mini (office)</div>
-            <div class="peer-detail">192.168.1.8 · last seen 2h ago</div>
-          </div>
-          <div class="peer-status offline">Offline</div>
         </div>
       </div>
     </div>
@@ -805,23 +743,7 @@
             <div class="dir-icon">📁</div>
             <div class="dir-info">
               <div class="dir-path">~/Documents</div>
-              <div class="dir-stats">1,248 files · watching recursively</div>
-            </div>
-            <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
-          </div>
-          <div class="dir-item">
-            <div class="dir-icon">📁</div>
-            <div class="dir-info">
-              <div class="dir-path">~/Desktop</div>
-              <div class="dir-stats">83 files · watching recursively</div>
-            </div>
-            <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
-          </div>
-          <div class="dir-item">
-            <div class="dir-icon">📁</div>
-            <div class="dir-info">
-              <div class="dir-path">~/Projects/ShadowSyncMac</div>
-              <div class="dir-stats">312 files · watching recursively</div>
+              <div class="dir-stats">Watching recursively · configured in config.json</div>
             </div>
             <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
           </div>
@@ -923,94 +845,96 @@ function navigate(page) {
   document.getElementById('page-' + page).classList.add('active');
   event.currentTarget.classList.add('active');
   if (page === 'activity') {
-    document.getElementById('activityBadge').textContent = '0';
+    const badge = document.getElementById('activityBadge');
+    badge.textContent = '0';
+    badge.style.display = 'none';
   }
 }
 
-// ── Live activity log ─────────────────────────────────────────────────────────
-const events = [
-  { type: 'created', icon: '↑', path: '~/Documents/notes.md', meta: 'Sent to MacBook Air · 2.1 KB' },
-  { type: 'received', icon: '↓', path: '~/Documents/design/mockup_v3.fig', meta: 'Received from Mac Studio · 4.8 MB' },
-  { type: 'modified', icon: '~', path: '~/Documents/report.docx', meta: 'Modified · Synced to 2 peers' },
-  { type: 'deleted', icon: '✕', path: '~/Desktop/old_draft.txt', meta: 'Deleted · Propagated to peers' },
-  { type: 'created', icon: '↑', path: '~/Projects/ShadowSyncMac/core/engine.py', meta: 'Sent to MacBook Air · 8.3 KB' },
-  { type: 'received', icon: '↓', path: '~/Documents/budget_2026.xlsx', meta: 'Received from Mac Studio · 42 KB' },
-];
+// ── State ─────────────────────────────────────────────────────────────────────
+let sentCount = 0, receivedCount = 0, errorCount = 0, peerCount = 0;
 
-let eventIdx = 0;
-let sentCount = 0, receivedCount = 0;
+function updateStats() {
+  document.getElementById('statSent').textContent = sentCount;
+  document.getElementById('statReceived').textContent = receivedCount;
+  document.getElementById('statErrors').textContent = errorCount;
+  document.getElementById('statPeers').textContent = peerCount;
 
+  const pill = document.getElementById('mainStatusPill');
+  const badge = document.getElementById('peerBadge');
+  if (peerCount > 0) {
+    pill.className = 'status-pill';
+    pill.querySelector('span').textContent = peerCount + ' peer' + (peerCount > 1 ? 's' : '') + ' connected';
+    badge.textContent = peerCount;
+    badge.style.display = '';
+    document.getElementById('peersCardTitle').textContent = 'Connected (' + peerCount + ')';
+  } else {
+    pill.className = 'status-pill inactive';
+    pill.querySelector('span').textContent = 'No peers';
+    badge.style.display = 'none';
+    document.getElementById('peersCardTitle').textContent = 'Connected (0)';
+  }
+}
+
+// ── Activity log ──────────────────────────────────────────────────────────────
 function formatTime(d) {
   return d.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
-function addLogEntry() {
-  const e = events[eventIdx % events.length];
-  eventIdx++;
-
+function addLogEntry(type, path, meta) {
+  const icons = { created: '↑', modified: '~', deleted: '✕', received: '↓' };
+  const icon = icons[type] || '·';
   const now = new Date();
+
   const entry = document.createElement('div');
   entry.className = 'log-entry';
   entry.innerHTML = `
-    <div class="log-icon ${e.type}">${e.icon}</div>
+    <div class="log-icon ${type}">${icon}</div>
     <div class="log-body">
-      <div class="log-path">${e.path}</div>
-      <div class="log-meta">${e.meta}</div>
+      <div class="log-path">${path}</div>
+      <div class="log-meta">${meta}</div>
     </div>
     <div class="log-time">${formatTime(now)}</div>
   `;
 
+  // Activity log
   const log = document.getElementById('activityLog');
+  const emptyState = log.querySelector('.empty-state');
+  if (emptyState) emptyState.remove();
   log.prepend(entry);
-  while (log.children.length > 30) log.removeChild(log.lastChild);
+  while (log.children.length > 50) log.removeChild(log.lastChild);
 
-  // Update dashboard log too
+  // Dashboard log
   const dl = document.getElementById('dashboardLog');
-  const dEntry = entry.cloneNode(true);
-  dl.prepend(dEntry);
-  while (dl.children.length > 4) dl.removeChild(dl.lastChild);
-
-  // Update stats
-  if (e.type === 'created' || e.type === 'modified') {
-    sentCount++;
-    document.getElementById('statSent').textContent = sentCount;
-  } else if (e.type === 'received') {
-    receivedCount++;
-    document.getElementById('statReceived').textContent = receivedCount;
-  }
+  const dlEmpty = dl.querySelector('.empty-state');
+  if (dlEmpty) dlEmpty.remove();
+  dl.prepend(entry.cloneNode(true));
+  while (dl.children.length > 5) dl.removeChild(dl.lastChild);
 
   // Badge
   const badge = document.getElementById('activityBadge');
   const current = parseInt(badge.textContent) || 0;
   badge.textContent = current + 1;
+  badge.style.display = '';
+
+  // Stats
+  if (type === 'created' || type === 'modified') sentCount++;
+  else if (type === 'received') receivedCount++;
+  updateStats();
 }
 
-// Initial entries
-for (let i = 0; i < 6; i++) {
-  setTimeout(() => addLogEntry(), i * 200);
+// ── Sync bar — only animate when there are peers ──────────────────────────────
+function setSyncBarActive(active) {
+  const fill = document.getElementById('syncBarFill');
+  if (active) fill.classList.add('active');
+  else fill.classList.remove('active');
 }
-
-// Simulate live sync
-setInterval(() => {
-  addLogEntry();
-}, 4000 + Math.random() * 3000);
-
-// ── Transfers simulation ───────────────────────────────────────────────────────
-let p1 = 67, p2 = 23;
-setInterval(() => {
-  p1 = Math.min(100, p1 + Math.random() * 5);
-  p2 = Math.min(100, p2 + Math.random() * 3);
-  document.getElementById('pb1').style.width = p1 + '%';
-  document.getElementById('tp1').textContent = Math.round(p1) + '%';
-  document.getElementById('pb2').style.width = p2 + '%';
-  document.getElementById('tp2').textContent = Math.round(p2) + '%';
-  if (p1 >= 100) p1 = 0;
-  if (p2 >= 100) p2 = 0;
-}, 500);
 
 // ── Actions ───────────────────────────────────────────────────────────────────
 function clearLog() {
-  document.getElementById('activityLog').innerHTML = '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">No events yet</div></div>';
+  document.getElementById('activityLog').innerHTML =
+    '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">Log cleared</div></div>';
+  document.getElementById('activityBadge').style.display = 'none';
 }
 
 function addFolder() {
@@ -1022,7 +946,7 @@ function addFolder() {
     <div class="dir-icon">📁</div>
     <div class="dir-info">
       <div class="dir-path">${path}</div>
-      <div class="dir-stats">Scanning… · watching recursively</div>
+      <div class="dir-stats">Added — update config.json to persist</div>
     </div>
     <div class="dir-remove" onclick="this.parentElement.remove()">✕</div>
   `;
@@ -1038,6 +962,12 @@ function scanPeers() {
     btn.disabled = false;
   }, 2000);
 }
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+updateStats();
+setSyncBarActive(false);
+document.getElementById('activityLog').innerHTML =
+  '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">Waiting for sync activity…</div></div>';
 </script>
 </body>
 </html>
