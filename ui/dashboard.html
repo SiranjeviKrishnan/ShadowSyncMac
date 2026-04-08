@@ -1007,6 +1007,35 @@ function scanPeers() {
     });
 }
 
+// ── Activity polling ──────────────────────────────────────────────────────────
+let lastEventTs = 0;
+
+const EVENT_LABELS = {
+  sync_ok:        { type: 'received', label: 'Synced' },
+  received:       { type: 'received', label: 'Received' },
+  peer_connected: { type: 'created',  label: 'Peer connected' },
+  peer_lost:      { type: 'deleted',  label: 'Peer lost' },
+  conflict:       { type: 'modified', label: 'Conflict' },
+  progress:       null,   // skip progress noise
+};
+
+function pollActivity() {
+  fetch(API + '/activity')
+    .then(r => r.json())
+    .then(data => {
+      const events = (data.events || []).filter(e => e.ts > lastEventTs);
+      events.forEach(e => {
+        const mapping = EVENT_LABELS[e.event];
+        if (mapping === null) return;   // skip
+        const evType = mapping ? mapping.type : 'modified';
+        const label  = mapping ? mapping.label : e.event;
+        addLogEntry(evType, e.detail || e.event, label);
+        if (e.ts > lastEventTs) lastEventTs = e.ts;
+      });
+    })
+    .catch(() => {});
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 updateStats();
 setSyncBarActive(false);
@@ -1014,7 +1043,9 @@ document.getElementById('activityLog').innerHTML =
   '<div class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">Waiting for sync activity…</div></div>';
 
 pollStatus();
+pollActivity();
 setInterval(pollStatus, 5000);
+setInterval(pollActivity, 3000);
 </script>
 </body>
 </html>

@@ -53,6 +53,9 @@ class IPCServer:
         self._subscribers: list[socket.socket] = []
         self._sub_lock = threading.Lock()
 
+        self._event_buffer: list[dict] = []
+        self._event_lock = threading.Lock()
+
         self._server_sock: Optional[socket.socket] = None
         self._running = False
         self._thread: Optional[threading.Thread] = None
@@ -95,6 +98,11 @@ class IPCServer:
         msg = {"event": event_type, "detail": detail, "ts": time.time()}
         if data:
             msg["data"] = data
+        # Buffer for HTTP polling clients (dashboard activity tab)
+        with self._event_lock:
+            self._event_buffer.append(msg)
+            if len(self._event_buffer) > 200:
+                self._event_buffer.pop(0)
         self._broadcast(msg)
 
     # ── Internal ──────────────────────────────────────────────────────────────
@@ -313,6 +321,14 @@ class _DashboardHandler(BaseHTTPRequestHandler):
         elif self.path == "/api/conflicts":
             history = self.engine.get_conflict_history(20) if self.engine else []
             self._send_json({"history": history})
+        elif self.path.startswith("/api/activity"):
+            ipc = self.ipc_ref
+            if ipc:
+                with ipc._event_lock:
+                    events = list(ipc._event_buffer)
+            else:
+                events = []
+            self._send_json({"events": events})
         else:
             self.send_response(404)
             self.end_headers()
